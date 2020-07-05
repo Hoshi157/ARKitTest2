@@ -9,7 +9,7 @@
 import UIKit
 import SceneKit
 import ARKit
-
+// この方法はARAnchorは環境に紐付いた情報なので共有される場合などに適している。
 class ViewController: UIViewController, ARSCNViewDelegate {
 
     @IBOutlet var sceneView: ARSCNView!
@@ -28,6 +28,11 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         // Set the scene to the view
         sceneView.scene = scene
+        
+        let gesture = UITapGestureRecognizer(target: self, action: #selector(Tap))
+        sceneView.addGestureRecognizer(gesture)
+        
+        sceneView.autoenablesDefaultLighting = true
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -45,6 +50,16 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         // Pause the view's session
         sceneView.session.pause()
+    }
+    
+    @objc func Tap(sender: UITapGestureRecognizer) {
+        let position = sender.location(in: sceneView)
+        let results = sceneView.hitTest(position, types: .featurePoint) // sceneViewのhitTestを取得
+        if !results.isEmpty {
+            // ARAnchorはobjectを配置するための位置・方向などを持ったオブジェクト
+            let anchor = ARAnchor(name: "shipAnchor", transform: results.first!.worldTransform)
+            sceneView.session.add(anchor: anchor)
+        }
     }
 
     // MARK: - ARSCNViewDelegate
@@ -71,5 +86,16 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         
+    }
+    // ARAnchor生成時に呼ばれる
+    func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
+        if anchor.name == "shipAnchor" {
+            guard let scene = SCNScene(named: "ship.scn", inDirectory: "art.scnassets") else {
+                return
+            }
+            let shipNode = scene.rootNode.childNode(withName: "ship", recursively: false)!
+            node.addChildNode(shipNode)
+            // ARAnchor上にshipNodeを配置する
+        }
     }
 }
